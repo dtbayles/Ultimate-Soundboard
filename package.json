@@ -1,0 +1,31 @@
+{
+  "name": "naija-comedy-soundboard",
+  "version": "1.0.0",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.19.0",
+    "@react-navigation/bottom-tabs": "^6.5.8",
+    "expo": "^48.0.0",
+    "expo-asset": "~8.9.1",
+    "expo-av": "~13.2.1",
+    "expo-document-picker": "~11.2.2",
+    "expo-file-system": "~15.2.2",
+    "expo-media-library": "^15.2.3",
+    "expo-sharing": "^11.2.2",
+    "expo-status-bar": "~1.4.4",
+    "react": "18.2.0",
+    "react-native": "0.71.11"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@react-navigation/native": "^6.1.7",
+    "expo-permissions": "^14.1.1"
+  },
+  "private": true
+}
