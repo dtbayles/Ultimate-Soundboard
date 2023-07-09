@@ -1,62 +1,14 @@
-import React, {useEffect, useState} from 'react';
-import {FlatList, View, TouchableOpacity, Text, TextInput, StyleSheet, Modal} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, FlatList, View, TouchableOpacity, Text, TextInput, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import Sound from './Sound';
-import {Ionicons} from "@expo/vector-icons";
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_KEY, API_URL } from '@env';
 
-const sounds = [
-  {
-    name: 'Sound 1',
-    source: require('../assets/sounds/test_sound.mp3'),
-    tags: ['tag1', 'tag2'],
-    category: 'category1',
-  },
-  {
-    name: 'Sound 2',
-    source: require('../assets/sounds/test_sound.mp3'),
-    tags: ['tag1', 'tag2'],
-    category: 'category1',
-  },
-  {
-    name: 'Sound 3 Sound 3 Sound 3 Sound 3 Sound 3 Sound 3 Sound 3 Sound 3 Sound 3',
-    source: require('../assets/sounds/test_sound.mp3'),
-    tags: ['tag1', 'tag2'],
-    category: 'category1',
-  },
-  {
-    name: 'God did',
-    source: require('../assets/sounds/god-did.mp3'),
-    tags: ['tag1', 'tag2'],
-    category: 'category1',
-  },
-  {
-    name: 'Sound 4',
-    source: require('../assets/sounds/test_sound.mp3'),
-    tags: ['tag1', 'tag2'],
-    category: 'category1',
-  },
-  {
-    name: 'Sound 5',
-    source: require('../assets/sounds/test_sound.mp3'),
-    tags: ['tag1', 'tag2'],
-    category: 'category1',
-  },
-  {
-    name: 'Sound 6',
-    source: require('../assets/sounds/test_sound.mp3'),
-    tags: ['tag1', 'tag2'],
-    category: 'category1',
-  },
-  {
-    name: 'God did 7',
-    source: require('../assets/sounds/god-did.mp3'),
-    tags: ['tag1', 'tag3'],
-    category: 'category1',
-  },
-];
-
-const availableTags = ['tag1', 'tag2', 'tag3', 'tag4', 'tag5'];
-const availableCategories = ['category1', 'category2', 'category3', 'category4', 'category5'];
+const windowWidth = Dimensions.get('window').width;
+const availableTags = ['golfing', 'tag2', 'tag3', 'tag4', 'tag5'];
+const availableCategories = ['DJ Khaled', 'Vine', 'category3', 'category4', 'category5'];
 
 const Soundboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,10 +16,29 @@ const Soundboard = () => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [favoriteSounds, setFavoriteSounds] = useState([]);
+  const [sounds, setSounds] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    fetchSounds();
     loadFavoriteSounds();
   }, []);
+
+  const fetchSounds = async () => {
+    try {
+      const response = await axios.get(API_URL, {
+        headers: {
+          'x-api-key': API_KEY,
+        },
+      });
+      setSounds(response.data);
+      setIsLoading(false);
+    } catch (error) {
+      console.log('Error fetching sounds:', error);
+      console.log('apiKey:', apiKey);
+      setIsLoading(false);
+    }
+  };
 
   const loadFavoriteSounds = async () => {
     try {
@@ -87,13 +58,15 @@ const Soundboard = () => {
     return (!showFavorites || isFavorite) && isMatchingSearch && hasMatchingTags;
   });
 
+  const itemSize = (windowWidth - 20) / 3 - 10; // Calculate the item size dynamically
 
   const renderSoundItem = ({ item }) => {
     return (
-      <View style={styles.soundItemContainer}>
+      <View style={[styles.soundItemContainer, { width: itemSize, height: itemSize }]}>
         <Sound
           name={item.name}
-          source={item.source}
+          audio_source={item.audio_source}
+          video_source={item.video_source}
           isFavorite={favoriteSounds.some(([name]) => name === item.name)}
         />
       </View>
@@ -119,6 +92,27 @@ const Soundboard = () => {
       >
         <Text style={styles.tagText}>{item}</Text>
       </TouchableOpacity>
+    );
+  };
+
+  const renderCategorySounds = ({ item }) => {
+    const soundsInCategory = filteredSounds.filter((sound) => sound.category === item);
+
+    if (soundsInCategory.length === 0) {
+      return null;
+    }
+
+    return (
+      <View>
+        <Text style={styles.categoryHeader}>{item}</Text>
+        <FlatList
+          data={soundsInCategory}
+          renderItem={renderSoundItem}
+          keyExtractor={(item) => item.name}
+          numColumns={3}
+          contentContainerStyle={styles.soundListContainer}
+        />
+      </View>
     );
   };
 
@@ -166,13 +160,13 @@ const Soundboard = () => {
           </View>
         </View>
       )}
-      {filteredSounds.length > 0 ? (
+      {isLoading ? (
+        <ActivityIndicator size="large" color="black" style={styles.loadingIndicator} />
+      ) : filteredSounds.length > 0 ? (
         <FlatList
-          data={filteredSounds}
-          renderItem={renderSoundItem}
-          keyExtractor={(item) => item.name}
-          numColumns={1}
-          contentContainerStyle={styles.soundListContainer}
+          data={availableCategories}
+          renderItem={renderCategorySounds}
+          keyExtractor={(item) => item}
         />
       ) : (
         <Text style={styles.noSoundsText}>No sounds found.</Text>
@@ -189,14 +183,12 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   soundItemContainer: {
-    flex: 1,
     margin: 5,
-    padding: 5,
     borderRadius: 10,
   },
   soundListContainer: {
-    justifyContent: 'flex-start',
-    flexDirection: 'column',
+    paddingHorizontal: 10,
+    paddingTop: 5,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -273,6 +265,18 @@ const styles = StyleSheet.create({
   tagItemSelected: {
     backgroundColor: 'blue',
     borderColor: 'blue',
+  },
+  loadingIndicator: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoryHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+    paddingHorizontal: 10,
   },
 });
 

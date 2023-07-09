@@ -1,10 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Share, FlatList } from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, Linking, Share, FlatList, Alert} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Email } from 'react-native-mail';
 
 const Settings = () => {
   const handleRemoveAds = () => {
     // Code to handle removing ads forever
+  };
+
+  const handleRestorePurchases = () => {
+    // Code to handle restoring purchases
   };
 
   const handleMoreAboutDeveloper = () => {
@@ -12,12 +17,19 @@ const Settings = () => {
     Linking.openURL('https://drewbayles.com');
   };
 
-  const handleRestorePurchases = () => {
-    // Code to handle restoring purchases
-  }
-
   const handleContactDeveloper = () => {
-    // Code to handle contacting the developer
+    const recipientEmail = 'drew@dreamtechlab.com';
+    const subject = 'Feedback on Soundboard App';
+
+    const emailUrl = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}`;
+
+    Linking.openURL(emailUrl)
+      .then(() => {
+        console.log('Email opened');
+      })
+      .catch((error) => {
+        console.log('Failed to open email:', error);
+      });
   }
 
   const handleRateApp = () => {

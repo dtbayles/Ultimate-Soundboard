@@ -1,20 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import { View, Text, TouchableOpacity, Linking, StyleSheet } from 'react-native';
-import { Audio } from 'expo-av';
+import { Audio, Video, InterruptionModeAndroid, InterruptionModeIOS, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SoundButton = ({ name, source }) => {
+const Sound = ({ name, audio_source, video_source }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+  const video = useRef(null);
+  const [status, setStatus] = useState({});
 
   useEffect(() => {
     loadFavoriteState();
+    return () => {
+      if (sound !== null) {
+        sound.unloadAsync();
+      }
+    };
   }, []);
 
   const loadFavoriteState = async () => {
@@ -44,50 +49,54 @@ const SoundButton = ({ name, source }) => {
 
   const handlePress = async () => {
     try {
-      if (isPlaying) {
-        await sound.pauseAsync();
-        setIsPlaying(false);
+      if (sound) {
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          await sound.playAsync();
+          setIsPlaying(true);
+        }
       } else {
-        const { sound: audioSound } = await Audio.Sound.createAsync(source);
-        setSound(audioSound);
-        audioSound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded) {
-            setCurrentTime(status.positionMillis);
-            setDuration(status.durationMillis);
-          }
-        });
-        await audioSound.playAsync();
-        setIsPlaying(true); // change to true to allow pausing
+        if (audio_source) {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: true,
+            interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+          });
+          const audioSound = new Audio.Sound();
+          await audioSound.loadAsync({ uri: audio_source });
+          await audioSound.playAsync();
+          setSound(audioSound);
+          setIsPlaying(true);
+        }
       }
     } catch (error) {
-      console.log(error);
+      console.log('video_source', video_source);
+      console.log('audio_source', audio_source);
+      console.log('Playback error:', error);
     }
+  };
+
+  const handlePlaybackStatusUpdate = (status) => {
+    setIsPlaying(status.isPlaying);
   };
 
   const handleShare = async () => {
     try {
-      if (sound !== null) {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded) {
-          const localUri = FileSystem.documentDirectory + 'sound.mp3';
-          await FileSystem.copyAsync({
-            from: status.uri,
-            to: localUri,
-          });
-          await Sharing.shareAsync(localUri);
-        }
+      const localUri = FileSystem.documentDirectory + 'audio.mp3';
+      const { exists } = await FileSystem.getInfoAsync(localUri);
+
+      if (exists) {
+        await Sharing.shareAsync(localUri);
       } else {
-        const { sound: audioSound } = await Audio.Sound.createAsync(source);
-        const status = await audioSound.getStatusAsync();
-        if (status.isLoaded) {
-          const localUri = FileSystem.documentDirectory + 'sound.mp3';
-          await FileSystem.copyAsync({
-            from: status.uri,
-            to: localUri,
-          });
-          await Sharing.shareAsync(localUri);
-          await audioSound.unloadAsync(); // Unload the sound after sharing
-        }
+        const { uri } = await FileSystem.downloadAsync(
+          audio_source || video_source,
+          localUri
+        );
+        await Sharing.shareAsync(uri);
       }
     } catch (error) {
       console.log('Sharing error:', error);
@@ -97,11 +106,12 @@ const SoundButton = ({ name, source }) => {
   const styles = StyleSheet.create({
     container: {
       flexDirection: 'column',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
+      maxHeight: '100%',
+      maxWidth: '100%',
       paddingVertical: 10,
-      paddingHorizontal: 20,
-      backgroundColor: '#f9f9f9',
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
       borderRadius: 10,
       shadowColor: '#000',
       shadowOffset: {
@@ -111,89 +121,82 @@ const SoundButton = ({ name, source }) => {
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
       elevation: 5,
+      overflow: 'hidden',
     },
-    controlsContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      width: '100%',
-      marginTop: 10,
+    backgroundVideo: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      borderRadius: 10,
     },
-    leftContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexGrow: 1,
-    },
-    rightContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    controlButton: {
-      padding: 10,
-      borderRadius: 50,
-      backgroundColor: '#e6e6e6',
-    },
-    favoriteButton: {
-      marginLeft: 10,
-    },
-    shareButton: {
-      marginLeft: 10,
-    },
-    timeStamp: {
-      marginTop: 5,
-    },
-    timeBarContainer: {
-      width: '100%',
-      height: 5,
-      backgroundColor: '#ccc',
-      borderRadius: 5,
-      marginTop: 5,
-    },
-    currentTimeBar: {
-      height: 5,
-      backgroundColor: '#333',
-      borderRadius: 5,
+    backgroundOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
     },
     nameText: {
-      width: 200,
-      marginLeft: 10,
-      flexShrink: 1,
+      flex: 1,
+      fontSize: 18,
+      textAlign: 'center',
+      fontFamily: 'System',
+      fontWeight: 'bold',
+      color: 'white',
+    },
+    buttonContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+    },
+    favoriteButton: {
+      backgroundColor: 'transparent',
+      padding: 10,
+      shadowColor: '#fff',
+      shadowOffset: {
+        width: 0,
+        height: 0,
+      },
+      shadowOpacity: 1,
+      shadowRadius: 6,
+      elevation: 5,
+    },
+    shareButton: {
+      backgroundColor: 'transparent',
+      padding: 10,
+      shadowColor: '#fff',
+      shadowOffset: {
+        width: 0,
+        height: 0,
+      },
+      shadowOpacity: 1,
+      shadowRadius: 6,
+      elevation: 5,
     },
   });
 
-  function convertToTimeStamp(milliseconds) {
-    const totalSeconds = Math.floor(milliseconds / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const remainingSeconds = totalSeconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-  }
   return (
     <View style={styles.container}>
-      <View style={styles.timeBarContainer}>
-        <View
-          style={[
-            styles.currentTimeBar,
-            { width: `${(currentTime / duration) * 100}%` },
-          ]}
+      {video_source && (
+        <View style={styles.backgroundOverlay} />
+      )}
+      {video_source && (
+        <Video
+          source={{ uri: video_source }}
+          ref={video}
+          style={styles.backgroundVideo}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay={isPlaying}
+          volume={0}
+          useNativeControls={false}
+          onPlaybackStatusUpdate={status => setStatus(status)}
         />
-      </View>
-      <Text style={styles.timeStamp}>
-        {convertToTimeStamp(currentTime)}/{convertToTimeStamp(duration)}
-      </Text>
-      <View style={styles.controlsContainer}>
-        <View style={styles.leftContainer}>
-          <TouchableOpacity style={styles.controlButton} onPress={handlePress}>
-            {!isPlaying ? (
-              <Ionicons name="ios-play" size={24} color="black" />
-            ) : (
-              <Ionicons name="ios-pause" size={24} color="black" />
-            )}
-          </TouchableOpacity>
-          <Text style={styles.nameText} numberOfLines={20}>{name}</Text>
-        </View>
-        <View style={styles.rightContainer}>
+      )}
+      <TouchableOpacity onPress={handlePress}>
+        <Text style={styles.nameText} numberOfLines={2}>
+          {name}
+        </Text>
+        <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={[styles.controlButton, styles.favoriteButton]}
+            style={styles.favoriteButton}
             onPress={handleToggleFavorite}
           >
             <Ionicons
@@ -203,15 +206,15 @@ const SoundButton = ({ name, source }) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.controlButton, styles.shareButton]}
+            style={styles.shareButton}
             onPress={handleShare}
           >
             <Ionicons name="ios-share" size={24} color="black" />
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };
 
-export default SoundButton;
+export default Sound;
