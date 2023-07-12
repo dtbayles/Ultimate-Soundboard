@@ -5,18 +5,24 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_KEY, API_URL } from '@env';
+import * as FileSystem from 'expo-file-system';
+import { useTheme } from "@react-navigation/native";
+import FilterMenu from "./Soundboard/FilterMenu";
+import InfiniteScroll from 'react-infinite-scroll-component';
 
 const windowWidth = Dimensions.get('window').width;
 const availableTags = ['golfing', 'tag2', 'tag3', 'tag4', 'tag5'];
 const availableCategories = ['DJ Khaled', 'Vine', 'category3', 'category4', 'category5'];
 
 const Soundboard = () => {
+  const { colors } = useTheme();
+  const [sounds, setSounds] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFavorites, setShowFavorites] = useState(false);
   const [selectedTags, setSelectedTags] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [favoriteSounds, setFavoriteSounds] = useState([]);
-  const [sounds, setSounds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -26,19 +32,37 @@ const Soundboard = () => {
 
   const fetchSounds = async () => {
     try {
-      const response = await axios.get(API_URL, {
+      const response = await axios.get(API_URL + `?page=${currentPage}&pageSize=10`, {
         headers: {
           'x-api-key': API_KEY,
         },
       });
-      setSounds(response.data);
+      const newSounds = response.data;
+
+      // setSounds(response.data);
       setIsLoading(false);
+
+      // Update the state with the new sounds and increment the page number
+      setSounds((prevSounds) => [...prevSounds, ...newSounds]);
+      setCurrentPage((prevPage) => prevPage + 1);
     } catch (error) {
       console.log('Error fetching sounds:', error);
-      console.log('apiKey:', apiKey);
       setIsLoading(false);
     }
   };
+
+  // const fetchSounds = async () => {
+  //   try {
+  //     const response = await axios.get(`/sounds?page=${currentPage}&pageSize=10`);
+  //     const newSounds = response.data;
+  //
+  //     // Update the state with the new sounds and increment the page number
+  //     setSounds((prevSounds) => [...prevSounds, ...newSounds]);
+  //     setCurrentPage((prevPage) => prevPage + 1);
+  //   } catch (error) {
+  //     console.log('Error fetching sounds:', error);
+  //   }
+  // };
 
   const loadFavoriteSounds = async () => {
     try {
@@ -64,9 +88,11 @@ const Soundboard = () => {
     return (
       <View style={[styles.soundItemContainer, { width: itemSize, height: itemSize }]}>
         <Sound
+          _id={item._id}
           name={item.name}
           audio_source={item.audio_source}
           video_source={item.video_source}
+          play_count={item.play_count}
           isFavorite={favoriteSounds.some(([name]) => name === item.name)}
         />
       </View>
@@ -90,7 +116,7 @@ const Soundboard = () => {
         style={[styles.tagItem, isSelected ? styles.tagItemSelected : null]}
         onPress={() => toggleTagSelection(item)}
       >
-        <Text style={styles.tagText}>{item}</Text>
+        <Text style={[styles.tagText, { color: colors.text }]}>{item}</Text>
       </TouchableOpacity>
     );
   };
@@ -104,7 +130,7 @@ const Soundboard = () => {
 
     return (
       <View>
-        <Text style={styles.categoryHeader}>{item}</Text>
+        <Text style={[styles.categoryHeader, { color: colors.text }]}>{item}</Text>
         <FlatList
           data={soundsInCategory}
           renderItem={renderSoundItem}
@@ -121,47 +147,32 @@ const Soundboard = () => {
   };
 
   return (
-    <View style={styles.soundBoard}>
+    <View style={[styles.soundBoard, { backgroundColor: colors.background }]}>
       <View style={styles.filterContainer}>
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="Search by sound name"
           value={searchQuery}
           onChangeText={(text) => setSearchQuery(text)}
         />
         <TouchableOpacity onPress={toggleMenu}>
-          <Ionicons name="filter" size={24} color="black" />
+          <Ionicons name="filter" size={24} color={colors.text} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.favoriteButton} onPress={() => setShowFavorites(!showFavorites)}>
           <Text style={styles.favoriteButtonText}>{showFavorites ? 'All' : 'Favorites'}</Text>
         </TouchableOpacity>
       </View>
       {showMenu && (
-        <View style={styles.menuContainer}>
-          <View style={styles.tagContainer}>
-            <Text style={styles.tagTitle}>Tags:</Text>
-            <FlatList
-              data={availableTags}
-              renderItem={renderTagItem}
-              keyExtractor={(item) => item}
-              numColumns={3}
-              contentContainerStyle={styles.tagListContainer}
-            />
-          </View>
-          <View style={styles.tagContainer}>
-            <Text style={styles.tagTitle}>Categories:</Text>
-            <FlatList
-              data={availableCategories}
-              renderItem={renderTagItem}
-              keyExtractor={(item) => item}
-              numColumns={3}
-              contentContainerStyle={styles.tagListContainer}
-            />
-          </View>
-        </View>
+        <FilterMenu
+          availableTags={availableTags}
+          availableCategories={availableCategories}
+          renderTagItem={renderTagItem}
+          colors={colors}
+          toggleTagSelection={toggleTagSelection}
+        />
       )}
       {isLoading ? (
-        <ActivityIndicator size="large" color="black" style={styles.loadingIndicator} />
+        <ActivityIndicator size="large" color={colors.text} style={styles.loadingIndicator} />
       ) : filteredSounds.length > 0 ? (
         <FlatList
           data={availableCategories}
@@ -179,7 +190,6 @@ const styles = StyleSheet.create({
   soundBoard: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#f3f3f3',
     borderRadius: 5,
   },
   soundItemContainer: {
@@ -220,35 +230,10 @@ const styles = StyleSheet.create({
   },
   noSoundsText: {
     textAlign: 'center',
-    marginVertical: 20,
+    marginTop: 'auto',
+    marginBottom: 'auto',
     fontSize: 16,
     color: 'gray',
-  },
-  menuContainer: {
-    position: 'absolute',
-    top: 55,
-    left: 0,
-    right: 0,
-    backgroundColor: '#f3f3f3',
-    zIndex: 1,
-    padding: 10,
-    opacity: 0.8,
-    borderBottomColor: 'gray',
-    borderBottomWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  tagContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    marginBottom: 5,
-  },
-  tagTitle: {
-    marginRight: 5,
-    fontWeight: 'bold',
-  },
-  tagListContainer: {
-    marginBottom: 10,
   },
   tagItem: {
     paddingVertical: 5,

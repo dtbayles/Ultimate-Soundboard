@@ -1,17 +1,23 @@
 import React, {useState, useEffect, useRef} from 'react';
-import { View, Text, TouchableOpacity, Linking, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Audio, Video, InterruptionModeAndroid, InterruptionModeIOS, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useTheme} from "@react-navigation/native";
+import {rgbToRGBA} from "./utils";
+import axios from "axios";
+import { API_KEY, API_URL } from '@env';
 
-const Sound = ({ name, audio_source, video_source }) => {
+const Sound = ({ _id, name, audio_source, video_source, play_count }) => {
+  const { colors } = useTheme();
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const video = useRef(null);
   const [status, setStatus] = useState({});
+  const [playCount, setPlayCount] = useState(play_count); // Initialize playCount with the initial play_count value
 
   useEffect(() => {
     loadFavoriteState();
@@ -47,18 +53,36 @@ const Sound = ({ name, audio_source, video_source }) => {
     saveFavoriteState(newFavoriteState);
   };
 
+  const incrementPlayCount = async () => {
+    const requestURL = `${API_URL}/${_id}/playcount`;
+    try {
+      await axios.put(requestURL, null, {
+        headers: {
+          'x-api-key': API_KEY,
+        },
+      });
+      setPlayCount((prevCount) => prevCount + 1);
+    } catch (error) {
+      console.log('Error incrementing play count:', error);
+    }
+  };
+
   const handlePress = async () => {
     try {
+      incrementPlayCount();
       if (sound) {
         if (isPlaying) {
-          await sound.pauseAsync();
-          setIsPlaying(false);
+          await sound.stopAsync(); // Stop the currently playing sound
+          await sound.playAsync(); // Start playing the sound from the beginning
         } else {
           await sound.playAsync();
-          setIsPlaying(true);
         }
+        setIsPlaying(!isPlaying);
       } else {
-        if (audio_source) {
+        if (video_source) {
+          await video.current.replayAsync(); // Replay the video from the beginning
+          setIsPlaying(true);
+        } else if (audio_source) {
           await Audio.setAudioModeAsync({
             allowsRecordingIOS: false,
             interruptionModeIOS: InterruptionModeIOS.DuckOthers,
@@ -78,10 +102,6 @@ const Sound = ({ name, audio_source, video_source }) => {
       console.log('audio_source', audio_source);
       console.log('Playback error:', error);
     }
-  };
-
-  const handlePlaybackStatusUpdate = (status) => {
-    setIsPlaying(status.isPlaying);
   };
 
   const handleShare = async () => {
@@ -111,16 +131,17 @@ const Sound = ({ name, audio_source, video_source }) => {
       maxHeight: '100%',
       maxWidth: '100%',
       paddingVertical: 10,
-      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+      backgroundColor: rgbToRGBA(colors.text, 0.3),
       borderRadius: 10,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
+      // shadowColor: '#000',
+      // shadowColor: colors.text,
+      // shadowOffset: {
+      //   width: 0,
+      //   height: 2,
+      // },
+      // shadowOpacity: 0.25,
+      // shadowRadius: 3.84,
+      // elevation: 5,
       overflow: 'hidden',
     },
     backgroundVideo: {
@@ -150,27 +171,34 @@ const Sound = ({ name, audio_source, video_source }) => {
     favoriteButton: {
       backgroundColor: 'transparent',
       padding: 10,
-      shadowColor: '#fff',
-      shadowOffset: {
-        width: 0,
-        height: 0,
-      },
-      shadowOpacity: 1,
-      shadowRadius: 6,
-      elevation: 5,
+      // shadowColor: '#fff',
+      // shadowOffset: {
+      //   width: 0,
+      //   height: 0,
+      // },
+      // shadowOpacity: 1,
+      // shadowRadius: 6,
+      // elevation: 5,
     },
     shareButton: {
       backgroundColor: 'transparent',
       padding: 10,
-      shadowColor: '#fff',
-      shadowOffset: {
-        width: 0,
-        height: 0,
-      },
-      shadowOpacity: 1,
-      shadowRadius: 6,
-      elevation: 5,
+      // shadowColor: '#fff',
+      // shadowOffset: {
+      //   width: 0,
+      //   height: 0,
+      // },
+      // shadowOpacity: 1,
+      // shadowRadius: 6,
+      // elevation: 5,
     },
+    playCountText: {
+      fontSize: 14,
+      color: colors.text,
+      width: 'auto',
+      textAlign: 'left',
+      fontWeight: 'bold',
+    }
   });
 
   return (
@@ -185,7 +213,6 @@ const Sound = ({ name, audio_source, video_source }) => {
           style={styles.backgroundVideo}
           resizeMode={ResizeMode.COVER}
           shouldPlay={isPlaying}
-          volume={0}
           useNativeControls={false}
           onPlaybackStatusUpdate={status => setStatus(status)}
         />
@@ -212,6 +239,9 @@ const Sound = ({ name, audio_source, video_source }) => {
             <Ionicons name="ios-share" size={24} color="black" />
           </TouchableOpacity>
         </View>
+        <Text style={styles.playCountText} numberOfLines={1}>
+          {playCount}
+        </Text>
       </TouchableOpacity>
     </View>
   );

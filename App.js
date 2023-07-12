@@ -1,8 +1,8 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { SafeAreaView, StyleSheet, useColorScheme } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import {NavigationContainer, DefaultTheme, DarkTheme, useTheme} from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import Soundboard from './components/Soundboard';
@@ -11,21 +11,22 @@ import Settings from './components/Settings';
 const Tab = createBottomTabNavigator();
 
 export default function App() {
-  return (
-    <SafeAreaView style={styles.container}>
-      <NavigationContainer>
-        <StatusBar style="auto" />
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
 
+  return (
+      <NavigationContainer theme={theme}>
         <Tab.Navigator
           screenOptions={({ route }) => ({
-            tabBarActiveTintColor: 'blue',
-            tabBarInactiveTintColor: 'gray',
+            // tabBarActiveTintColor: colors.primary,
+            // tabBarInactiveTintColor: colors.text,
             tabBarLabelStyle: {
               fontSize: 14,
+              fontFamily: 'System',
             },
-            tabBarStyle: {
-              display: 'flex',
-            },
+            // tabBarStyle: {
+              // backgroundColor: colors.card,
+            // },
             tabBarIcon: ({ focused, color, size }) => {
               let iconName;
 
@@ -60,14 +61,5 @@ export default function App() {
           <Tab.Screen name="Settings" component={Settings} options={{ title: 'Settings' }} />
         </Tab.Navigator>
       </NavigationContainer>
-    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-  },
-});
