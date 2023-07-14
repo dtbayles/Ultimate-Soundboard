@@ -6,18 +6,18 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useTheme} from "@react-navigation/native";
-import {rgbToRGBA} from "./utils";
+import {clearCacheDirectory, rgbToRGBA} from "./utils";
 import axios from "axios";
 import { API_KEY, API_URL } from '@env';
 
-const Sound = ({ _id, name, audio_source, video_source, play_count }) => {
-  const { colors } = useTheme();
+const Sound = ({ _id, name, audio_source, video_source, play_count, colors }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const video = useRef(null);
   const [status, setStatus] = useState({});
   const [playCount, setPlayCount] = useState(play_count); // Initialize playCount with the initial play_count value
+  const styles = componentStyles(colors);
 
   useEffect(() => {
     loadFavoriteState();
@@ -68,6 +68,9 @@ const Sound = ({ _id, name, audio_source, video_source, play_count }) => {
   };
 
   const handlePress = async () => {
+    // clearCacheDirectory(audio_source);
+    // console.log('audio_source', audio_source);
+    // console.log('video_source', video_source);
     try {
       incrementPlayCount();
       if (sound) {
@@ -123,84 +126,6 @@ const Sound = ({ _id, name, audio_source, video_source, play_count }) => {
     }
   };
 
-  const styles = StyleSheet.create({
-    container: {
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      maxHeight: '100%',
-      maxWidth: '100%',
-      paddingVertical: 10,
-      backgroundColor: rgbToRGBA(colors.text, 0.3),
-      borderRadius: 10,
-      // shadowColor: '#000',
-      // shadowColor: colors.text,
-      // shadowOffset: {
-      //   width: 0,
-      //   height: 2,
-      // },
-      // shadowOpacity: 0.25,
-      // shadowRadius: 3.84,
-      // elevation: 5,
-      overflow: 'hidden',
-    },
-    backgroundVideo: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      bottom: 0,
-      right: 0,
-      borderRadius: 10,
-    },
-    backgroundOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    },
-    nameText: {
-      flex: 1,
-      fontSize: 18,
-      textAlign: 'center',
-      fontFamily: 'System',
-      fontWeight: 'bold',
-      color: 'white',
-    },
-    buttonContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-    },
-    favoriteButton: {
-      backgroundColor: 'transparent',
-      padding: 10,
-      // shadowColor: '#fff',
-      // shadowOffset: {
-      //   width: 0,
-      //   height: 0,
-      // },
-      // shadowOpacity: 1,
-      // shadowRadius: 6,
-      // elevation: 5,
-    },
-    shareButton: {
-      backgroundColor: 'transparent',
-      padding: 10,
-      // shadowColor: '#fff',
-      // shadowOffset: {
-      //   width: 0,
-      //   height: 0,
-      // },
-      // shadowOpacity: 1,
-      // shadowRadius: 6,
-      // elevation: 5,
-    },
-    playCountText: {
-      fontSize: 14,
-      color: colors.text,
-      width: 'auto',
-      textAlign: 'left',
-      fontWeight: 'bold',
-    }
-  });
-
   return (
     <View style={styles.container}>
       {video_source && (
@@ -217,7 +142,7 @@ const Sound = ({ _id, name, audio_source, video_source, play_count }) => {
           onPlaybackStatusUpdate={status => setStatus(status)}
         />
       )}
-      <TouchableOpacity onPress={handlePress}>
+      <TouchableOpacity style={styles.touchableContainer} onPress={handlePress}>
         <Text style={styles.nameText} numberOfLines={2}>
           {name}
         </Text>
@@ -240,11 +165,103 @@ const Sound = ({ _id, name, audio_source, video_source, play_count }) => {
           </TouchableOpacity>
         </View>
         <Text style={styles.playCountText} numberOfLines={1}>
+          <Ionicons name="md-eye" size={14} color={colors.text} />
           {playCount}
         </Text>
       </TouchableOpacity>
     </View>
   );
 };
+
+const componentStyles = (colors) => StyleSheet.create({
+  container: {
+    flexDirection: 'column',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    // maxHeight: '100%',
+    // maxWidth: '100%',
+    width: '100%',
+    paddingVertical: 10,
+    backgroundColor: rgbToRGBA(colors.text, 0.3),
+    borderRadius: 10,
+    // shadowColor: '#000',
+    // shadowColor: colors.text,
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 2,
+    // },
+    // shadowOpacity: 0.25,
+    // shadowRadius: 3.84,
+    // elevation: 5,
+    overflow: 'hidden',
+  },
+  touchableContainer: {
+    width: '100%',
+    height: '100%',
+  },
+  backgroundVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    borderRadius: 10,
+  },
+  backgroundOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    // backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: rgbToRGBA(colors.background, 0.75),
+  },
+  nameText: {
+    flex: 1,
+    fontSize: 18,
+    textAlign: 'center',
+    fontFamily: 'System',
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  favoriteButton: {
+    backgroundColor: 'transparent',
+    padding: 10,
+    // shadowColor: '#fff',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 0,
+    // },
+    // shadowOpacity: 1,
+    // shadowRadius: 6,
+    // elevation: 5,
+  },
+  shareButton: {
+    backgroundColor: 'transparent',
+    padding: 10,
+    // shadowColor: '#fff',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 0,
+    // },
+    // shadowOpacity: 1,
+    // shadowRadius: 6,
+    // elevation: 5,
+  },
+  playCountText: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: 'bold',
+    // paddingLeft: 10,
+    marginLeft: 10,
+    marginRight: 'auto',
+    // backgroundColor: rgbToRGBA(colors.background, 0.75),
+    // textShadowColor: 'rgba(0, 0, 0, 0.5)', // Adjust the shadow color if needed
+    textShadowColor: rgbToRGBA(colors.background, 0.75), // Adjust the shadow color if needed
+    textShadowOffset: { width: 1, height: 1 }, // Adjust the shadow offset if needed
+    textShadowRadius: 2, // Adjust the shadow radius if needed
+  }
+});
 
 export default Sound;

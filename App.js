@@ -1,12 +1,12 @@
 import React from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet, useColorScheme } from 'react-native';
+import { useColorScheme } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {NavigationContainer, DefaultTheme, DarkTheme, useTheme} from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import Soundboard from './components/Soundboard';
 import Settings from './components/Settings';
+import Upload from "./components/Upload";
 
 const Tab = createBottomTabNavigator();
 
@@ -18,20 +18,18 @@ export default function App() {
       <NavigationContainer theme={theme}>
         <Tab.Navigator
           screenOptions={({ route }) => ({
-            // tabBarActiveTintColor: colors.primary,
-            // tabBarInactiveTintColor: colors.text,
             tabBarLabelStyle: {
               fontSize: 14,
               fontFamily: 'System',
             },
-            // tabBarStyle: {
-              // backgroundColor: colors.card,
-            // },
             tabBarIcon: ({ focused, color, size }) => {
               let iconName;
 
               if (route.name === 'Soundboard') {
                 iconName = focused ? 'ios-musical-notes' : 'ios-musical-notes-outline';
+                return <Ionicons name={iconName} size={size} color={color} />;
+              } else if (route.name === 'Upload') {
+                iconName = focused ? 'add' : 'add-outline';
                 return <Ionicons name={iconName} size={size} color={color} />;
               } else if (route.name === 'Settings') {
                 iconName = focused ? 'cog' : 'cog-outline';
@@ -53,11 +51,8 @@ export default function App() {
             },
           })}
         >
-          <Tab.Screen
-            name="Soundboard"
-            component={Soundboard}
-            options={{ title: 'Soundboard' }}
-          />
+          <Tab.Screen name="Soundboard" component={Soundboard} options={{ title: 'Soundboard' }} />
+          <Tab.Screen name="Upload" component={Upload} options={{ title: 'Upload' }} />
           <Tab.Screen name="Settings" component={Settings} options={{ title: 'Settings' }} />
         </Tab.Navigator>
       </NavigationContainer>
