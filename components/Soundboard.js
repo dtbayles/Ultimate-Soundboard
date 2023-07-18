@@ -295,31 +295,9 @@ const Soundboard = () => {
           toggleTagSelection={toggleTagSelection}
         />
       )}
-      {filteredSounds.length > 0 ? (
-        // <FlatList
-        //   data={filteredSounds}
-        //   renderItem={renderSoundItem}
-        //   keyExtractor={(item) => item.name}
-        //   numColumns={3}
-        //   contentContainerStyle={styles.soundListContainer}
-        //   onEndReached={fetchSounds} // Fetch more sounds when reaching the end of the list
-        //   onEndReachedThreshold={10} // Adjust the threshold as needed
-        //   ListFooterComponent={isLoading && <ActivityIndicator size="small" color={colors.text} />} // Render a loading indicator at the end of the list
-        //   refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchSounds} />} // Refresh the list when pulling down
-        // />
-        // <SectionList
-        //   // sections={DATA}
-        //   sections={testSounds.sounds}
-        // renderItem={renderSoundItem}
-        // renderSectionHeader={renderSectionHeader}
-        // keyExtractor={(item, index) => item.name + index}
-        // numColumns={3}
-        // contentContainerStyle={styles.soundListContainer}
-        // onEndReached={fetchSounds}
-        // onEndReachedThreshold={10}
-        // ListFooterComponent={isLoading && <ActivityIndicator size="small" color={colors.text} />}
-        // stickySectionHeadersEnabled={true}
-        // />
+      {isLoading ? (
+        <ActivityIndicator size="small" color={colors.text} />
+      ) : filteredSounds.length > 0 ? (
         <SectionList
           sections={formatData()}
           renderItem={renderSoundItem}
@@ -330,7 +308,7 @@ const Soundboard = () => {
           stickySectionHeadersEnabled={true}
           onEndReached={fetchSounds}
           onEndReachedThreshold={10}
-          ListFooterComponent={isLoading && <ActivityIndicator size="small" color={colors.text} />}
+          ListFooterComponent={<ActivityIndicator size="small" color={colors.text} />}
         />
       ) : (
         <Text style={styles.noSoundsText}>No sounds found.</Text>

@@ -1,163 +1,251 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, TouchableOpacity, StyleSheet } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  TouchableWithoutFeedback, Keyboard
+} from 'react-native';
 import { useTheme } from '@react-navigation/native';
-import DocumentPicker from 'expo-document-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { API_KEY, API_URL } from '@env';
+import {Video} from "expo-av";
+import {Ionicons} from "@expo/vector-icons";
 
 const Upload = () => {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
-  const [audioUrl, setAudioUrl] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
-  const [singleFile, setSingleFile] = useState(null);
+  const [url, setUrl] = useState('');
+  const [ file, setFile ] = useState(null);
   const { colors } = useTheme();
+  const styles = componentStyles(colors);
 
-  const checkPermissions = async () => {
-    const { status } = await Permissions.askAsync(Permissions.READ_EXTERNAL_STORAGE);
-    return status === 'granted';
-  };
+  useEffect(() => {
+    console.log('File.uri:', file ? file.uri : null);
+  }, [file]);
 
-  const uploadImage = async () => {
-    const BASE_URL = 'xxxx';
-
-    // Check if any file is selected or not
-    if (singleFile) {
-      // If file selected then create FormData
-      const data = new FormData();
-
-      data.append('file_attachment', {
-        uri: singleFile.uri,
-        name: singleFile.name,
-        type: singleFile.type,
+  const pickFile = async () => {
+    try {
+      const response = await DocumentPicker.getDocumentAsync({
+        type: ['audio/*','video/*'],
+        copyToCacheDirectory: true,
       });
 
-      try {
-        const res = await fetch(BASE_URL + 'tutorial/upload.php', {
-          method: 'post',
-          body: data,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'multipart/form-data',
-          },
-          timeout: 5000,
-        });
+      if (response.type === 'success') {
+        const { name, size, uri } = response;
+        const nameParts = name.split('.');
+        const fileType = nameParts[nameParts.length - 1];
+        const allowedFileTypes = ['mp3', 'mp4', 'm4a'];
 
-        const result = await res.json();
-        console.log('result', result);
-        if (result.status === 1) {
-          Alert.alert('Info', result.msg);
+        if (allowedFileTypes.includes(fileType.toLowerCase())) {
+          const typePrefix = fileType.toLowerCase() === 'mp4' ? 'video' : 'audio';
+
+          console.log('allowedFileTypes:', allowedFileTypes)
+          console.log('typePrefix:', typePrefix)
+          console.log('fileType:', fileType)
+
+          const fileToUpload = {
+            name: name,
+            size: size,
+            uri: uri,
+            type: `${typePrefix}/${fileType}`,
+          };
+
+          setFile(fileToUpload);
+        } else {
+          // Display an error message or perform any desired action
+          console.log('Invalid file type. Please select an audio or video file.');
+          setFile(null);
         }
-      } catch (error) {
-        console.log('error upload', error);
+      } else {
+        setFile(null);
       }
-    } else {
-      // If no file selected, show an alert
-      Alert.alert('Please select a file first');
+    } catch (err) {
+      setFile(null);
+      console.warn(err);
     }
   };
 
-  const selectFile = async () => {
-    const result = await checkPermissions();
+  const postFile = async () => {
+    const url = API_URL;
+    const fileUri = file.uri;
+    const formData = new FormData();
+    formData.append('file', file);
+    const options = {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'multipart/form-data',
+        'x-api-key': API_KEY,
+      },
+    };
 
-    if (result) {
-      try {
-        const result = await DocumentPicker.getDocumentAsync({
-          copyToCacheDirectory: false,
-          type: 'image/*',
-        });
-
-        if (result.type === 'success') {
-          console.log('res : ' + JSON.stringify(result));
-          setSingleFile(result);
-        }
-      } catch (err) {
-        setSingleFile(null);
-        console.warn(err);
+    try {
+      console.log('url:', url);
+      const response = await fetch(url, options);
+      if (response.ok) {
+        console.log('Document uploaded successfully');
+        // Display a success message to the user or perform any additional actions
+      } else {
+        throw new Error('Failed to upload document');
       }
+    } catch (error) {
+      console.log('Error uploading document:', error);
+      // Display an error message to the user or perform error handling logic
     }
-  };
-
-  const handleSubmit = () => {
-    console.log('Submitted:', name, category, audioUrl, videoUrl);
   };
 
   return (
-    <View>
-      <Text>Name:</Text>
-      <TextInput
-        style={{ color: colors.text }}
-        value={name}
-        onChangeText={setName}
-        placeholder="Enter name"
-      />
-
-      <Text>Category:</Text>
-      <TextInput
-        value={category}
-        onChangeText={setCategory}
-        placeholder="Enter category"
-      />
-
-      <Text>Audio URL:</Text>
-      <TextInput
-        value={audioUrl}
-        onChangeText={setAudioUrl}
-        placeholder="Enter audio URL"
-      />
-
-      <Text>Video URL:</Text>
-      <TextInput
-        value={videoUrl}
-        onChangeText={setVideoUrl}
-        placeholder="Enter video URL"
-      />
-
-      <Button onPress={handleSubmit} title="Submit" />
-
-      {singleFile && (
-        <Text style={styles.textStyle}>
-          File Name: {singleFile.name || ''}
-          {'\n'}
-          Type: {singleFile.type || ''}
-          {'\n'}
-          File Size: {singleFile.size || ''}
-          {'\n'}
-          URI: {singleFile.uri || ''}
-          {'\n'}
-        </Text>
-      )}
-
-      <TouchableOpacity style={styles.buttonStyle} activeOpacity={0.5} onPress={selectFile}>
-        <Text style={styles.buttonTextStyle}>Select File</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.buttonStyle} activeOpacity={0.5} onPress={uploadImage}>
-        <Text style={styles.buttonTextStyle}>Upload File</Text>
-      </TouchableOpacity>
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <View style={styles.introTextContainer}>
+          <Text style={[styles.introTextStyle, { paddingBottom: 10 }]}>Want to add a sound to the app? Upload a file or send a URL with any other details.</Text>
+          {/*<Text style={styles.introTextStyle}>All media requires approval before displaying (typically within 24 hours)</Text>*/}
+        </View>
+        <View style={styles.formContainer}>
+          <View style={styles.formRow}>
+            <Text style={styles.textStyle}>Sound Name</Text>
+            <TextInput
+              style={styles.textInput}
+              value={name}
+              onChangeText={setName}
+              placeholder="Enter name"
+            />
+          </View>
+          <View style={styles.formRow}>
+            <Text style={styles.textStyle}>Sound Category</Text>
+            <TextInput
+              style={styles.textInput}
+              value={category}
+              onChangeText={setCategory}
+              placeholder="Enter category"
+            />
+          </View>
+          <View style={styles.formRow}>
+            <Text style={styles.textStyle}>Sound URL</Text>
+            <TextInput
+              style={styles.textInput}
+              value={url}
+              onChangeText={setUrl}
+              placeholder="Enter URL"
+              clearButtonMode={"always"}
+            />
+          </View>
+          <View style={styles.previewContainer}>
+            {file && file.uri ? (
+              <>
+                <Video
+                  source={{ uri: file.uri }}
+                  style={styles.previewMedia}
+                  resizeMode="contain"
+                  useNativeControls
+                />
+                <TouchableOpacity style={styles.clearButton} onPress={() => setFile(null)}>
+                  <Ionicons name="close-circle" size={24} color="white" />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity style={styles.uploadFileSelector} onPress={pickFile}>
+                <Ionicons name="cloud-upload" size={50} color={colors.text} />
+                <Text style={styles.textStyle}>Select a file to upload</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        <TouchableOpacity style={styles.uploadButtonStyle} activeOpacity={0.5} onPress={postFile}>
+          <Text style={styles.buttonTextStyle}>Upload File</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
-const styles = StyleSheet.create({
-  buttonStyle: {
-    backgroundColor: '#307ecc',
-    borderWidth: 0,
-    color: '#FFFFFF',
-    borderColor: '#307ecc',
-    height: 40,
-    alignItems: 'center',
-    borderRadius: 30,
-    marginLeft: 35,
-    marginRight: 35,
-    marginTop: 15,
+const componentStyles = (colors) => StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  formContainer: {
+    flex: 1,
+  },
+  buttonContainer: {
+    marginVertical: 35,
   },
   buttonTextStyle: {
     color: '#FFFFFF',
-    paddingVertical: 10,
     fontSize: 16,
   },
-  textStyle: {
-    // Add any styles you want for the file details text
+  textInput: {
+    flex: 1,
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    borderRadius: 5,
+    marginTop: 5,
+    marginBottom: 15,
+    paddingLeft: 10,
+    width: '100%',
+    color: colors.text,
   },
+  formRow: {
+    flexDirection: 'column',
+    alignItems: 'left',
+    width: '100%',
+    paddingHorizontal: 20,
+    height: 80,
+  },
+  uploadButtonStyle: {
+    backgroundColor: colors.primary,
+    borderWidth: 0,
+    color: '#FFFFFF',
+    borderColor: '#307ecc',
+    height: 50,
+    borderRadius: 30,
+    marginLeft: 35,
+    marginRight: 35,
+    paddingBottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 35,
+  },
+  textStyle: {
+    color: colors.text,
+  },
+  previewContainer: {
+    flex: 1,
+    borderColor: colors.border,
+    borderWidth: 3,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    alignContent: 'center',
+  },
+  previewMedia: {
+    height: '100%',
+    width: '100%',
+  },
+  introTextContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  introTextStyle: {
+    color: colors.text,
+    fontSize: 18,
+  },
+  clearButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 1,
+  },
+  uploadFileSelector: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
 export default Upload;
