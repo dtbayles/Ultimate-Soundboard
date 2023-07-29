@@ -18,7 +18,8 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dbayles48.soundboard"
     },
     "android": {
       "adaptiveIcon": {
@@ -39,7 +40,24 @@
         {
           "iCloudContainerEnvironment": "Production"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "18008132-41f8-486b-a884-aa7f64e8fb32"
+      }
+    }
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-1525152987133318~5088851201",
+    "ios_app_id": "ca-app-pub-1525152987133318~5744862290"
   }
 }

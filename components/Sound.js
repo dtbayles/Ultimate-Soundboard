@@ -16,7 +16,7 @@ const Sound = ({ _id, name, audio_source, video_source, play_count, colors }) =>
   const [isFavorite, setIsFavorite] = useState(false);
   const video = useRef(null);
   const [status, setStatus] = useState({});
-  const [playCount, setPlayCount] = useState(play_count); // Initialize playCount with the initial play_count value
+  const [playCount, setPlayCount] = useState(play_count);
   const styles = componentStyles(colors);
 
   useEffect(() => {
@@ -49,8 +49,8 @@ const Sound = ({ _id, name, audio_source, video_source, play_count, colors }) =>
 
   const handleToggleFavorite = () => {
     const newFavoriteState = !isFavorite;
-    setIsFavorite(newFavoriteState);
     saveFavoriteState(newFavoriteState);
+    setIsFavorite(newFavoriteState);
   };
 
   const incrementPlayCount = async () => {

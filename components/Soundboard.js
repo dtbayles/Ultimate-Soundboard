@@ -20,6 +20,7 @@ import * as FileSystem from 'expo-file-system';
 import { useTheme } from "@react-navigation/native";
 import FilterMenu from "./Soundboard/FilterMenu";
 import {DATA, testSounds} from "./utils";
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 const windowWidth = Dimensions.get('window').width;
 const availableTags = ['golfing', 'tag2', 'tag3', 'tag4', 'tag5'];
@@ -38,6 +39,15 @@ const Soundboard = () => {
   const [hasMorePages, setHasMorePages] = useState(true);
   const [lastFetchedPage, setLastFetchedPage] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
+  const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy'; //TODO change this to the real adUnitId
+  const itemSize = (windowWidth - 20) / 3 - 10;
+
+  const filteredSounds = sounds.filter((sound) => {
+    const isMatchingSearch = sound.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const isFavorite = sound.isFavorite === true || favoriteSounds.some(([name]) => name === sound.name);
+    const hasMatchingTags = selectedTags.length === 0 || selectedTags.some((tag) => sound.tags.includes(tag));
+    return (!showFavorites || isFavorite) && isMatchingSearch && hasMatchingTags;
+  });
 
   useEffect(() => {
     // loadSoundsFromStorage();
@@ -119,7 +129,6 @@ const Soundboard = () => {
     }
   };
 
-
   // const downloadSound = async (sound) => {
   //   const audioFileUri = FileSystem.cacheDirectory + encodeURIComponent(`${sound.name}.mp3`);
   //   const audioDownloadResumable = FileSystem.createDownloadResumable(sound.audio_source, audioFileUri, {});
@@ -162,45 +171,17 @@ const Soundboard = () => {
       const favoriteSoundNames = await AsyncStorage.getAllKeys();
       const favoriteSounds = await AsyncStorage.multiGet(favoriteSoundNames);
       const parsedFavoriteSounds = favoriteSounds.map(([key, value]) => [key, JSON.parse(value)]);
-      setFavoriteSounds(parsedFavoriteSounds);
+      const filteredFavoriteSounds = parsedFavoriteSounds.filter(([, isFavorite]) => isFavorite);
+      setFavoriteSounds(filteredFavoriteSounds);
     } catch (error) {
       console.log('Error loading favorite sounds:', error);
     }
   };
 
-  const filteredSounds = sounds.filter((sound) => {
-    const isMatchingSearch = sound.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const isFavorite = sound.isFavorite === true || favoriteSounds.some(([name]) => name === sound.name);
-    const hasMatchingTags = selectedTags.length === 0 || selectedTags.some((tag) => sound.tags.includes(tag));
-    return (!showFavorites || isFavorite) && isMatchingSearch && hasMatchingTags;
-  });
-
-  const itemSize = (windowWidth - 20) / 3 - 10; // Calculate the item size dynamically
-
-  // const renderSoundItem = ({ item, index }) => {
-  //   // Check if the current item is one of the first three items in its category
-  //   const isFirstItemInCategory = index < 3 || sounds[index - 1].category !== item.category;
-  //
-  //   return (
-  //     <View>
-  //       <View>
-  //         {isFirstItemInCategory && (
-  //           <Text style={[styles.categoryHeader, { color: colors.text, backgroundColor: 'orange' }]}>{item.category}</Text>
-  //         )}
-  //       </View>
-  //       <View style={[styles.soundItemContainer, { width: itemSize, height: itemSize }]}>
-  //         <Sound
-  //           _id={item._id}
-  //           name={item.name}
-  //           audio_source={item.audio_source}
-  //           video_source={item.video_source}
-  //           play_count={item.play_count}
-  //           isFavorite={favoriteSounds.some(([name]) => name === item.name)}
-  //         />
-  //       </View>
-  //     </View>
-  //   );
-  // };
+  const handleFilterByFavorites = () => {
+    setShowFavorites(!showFavorites);
+    loadFavoriteSounds();
+  };
 
   const renderSoundItem = ({ item }) => (
     <View style={[styles.soundItemContainer, { width: itemSize, height: itemSize }]}>
@@ -221,7 +202,6 @@ const Soundboard = () => {
       {category}
     </Text>
   );
-
 
   const toggleTagSelection = (tag) => {
     const isSelected = selectedTags.includes(tag);
@@ -270,49 +250,62 @@ const Soundboard = () => {
     return formattedData;
   };
 
+  const bannerError = () => {
+    console.log("An error");
+  }
+
   return (
-    <View style={[styles.soundBoard, { backgroundColor: colors.background }]}>
-      <View style={styles.filterContainer}>
-        <TextInput
-          style={[styles.searchInput, { color: colors.text }]}
-          placeholder="Search by sound name"
-          value={searchQuery}
-          onChangeText={(text) => setSearchQuery(text)}
-        />
-        <TouchableOpacity onPress={toggleMenu}>
-          <Ionicons name="filter" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.favoriteButton} onPress={() => setShowFavorites(!showFavorites)}>
-          <Text style={styles.favoriteButtonText}>{showFavorites ? 'All' : 'Favorites'}</Text>
-        </TouchableOpacity>
+    <View style={{ height: '100%' }}>
+      <View style={[styles.soundBoard, { backgroundColor: colors.background }]}>
+        <View style={styles.filterContainer}>
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search by sound name"
+            value={searchQuery}
+            onChangeText={(text) => setSearchQuery(text)}
+          />
+          <TouchableOpacity onPress={toggleMenu}>
+            <Ionicons name="filter" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.favoriteButton} onPress={handleFilterByFavorites}>
+            <Text style={styles.favoriteButtonText}>{showFavorites ? 'All' : 'Favorites'}</Text>
+          </TouchableOpacity>
+        </View>
+        {showMenu && (
+          <FilterMenu
+            availableTags={availableTags}
+            availableCategories={availableCategories}
+            renderTagItem={renderTagItem}
+            colors={colors}
+            toggleTagSelection={toggleTagSelection}
+          />
+        )}
+        {isLoading ? (
+          <ActivityIndicator size="small" color={colors.text} />
+        ) : filteredSounds.length > 0 ? (
+          <SectionList
+            sections={formatData()}
+            renderItem={renderSoundItem}
+            renderSectionHeader={renderSectionHeader}
+            keyExtractor={(item, index) => item.name + index}
+            contentContainerStyle={styles.soundListContainer}
+            refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchSounds} />}
+            stickySectionHeadersEnabled={true}
+            onEndReached={fetchSounds}
+            onEndReachedThreshold={10}
+            ListFooterComponent={<ActivityIndicator size="small" color={colors.text} />}
+          />
+        ) : (
+          <Text style={styles.noSoundsText}>No sounds found.</Text>
+        )}
       </View>
-      {showMenu && (
-        <FilterMenu
-          availableTags={availableTags}
-          availableCategories={availableCategories}
-          renderTagItem={renderTagItem}
-          colors={colors}
-          toggleTagSelection={toggleTagSelection}
+      <BannerAd
+          unitId={adUnitId}
+          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+          requestOptions={{
+            requestNonPersonalizedAdsOnly: true,
+          }}
         />
-      )}
-      {isLoading ? (
-        <ActivityIndicator size="small" color={colors.text} />
-      ) : filteredSounds.length > 0 ? (
-        <SectionList
-          sections={formatData()}
-          renderItem={renderSoundItem}
-          renderSectionHeader={renderSectionHeader}
-          keyExtractor={(item, index) => item.name + index}
-          contentContainerStyle={styles.soundListContainer}
-          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchSounds} />}
-          stickySectionHeadersEnabled={true}
-          onEndReached={fetchSounds}
-          onEndReachedThreshold={10}
-          ListFooterComponent={<ActivityIndicator size="small" color={colors.text} />}
-        />
-      ) : (
-        <Text style={styles.noSoundsText}>No sounds found.</Text>
-      )}
     </View>
   );
 };
@@ -392,6 +385,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 10,
     minWidth: '100%',
+  },
+  bottomBanner: {
+    position: 'absolute',
+    bottom: 0,
   },
 });
 

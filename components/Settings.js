@@ -6,6 +6,7 @@ import {useTheme} from "@react-navigation/native";
 
 const Settings = () => {
   const { colors } = useTheme();
+  const styles = componentStyles(colors);
 
   const handleRemoveAds = () => {
     // Code to handle removing ads forever
@@ -100,47 +101,6 @@ const Settings = () => {
     },
   ];
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    optionList: {
-      paddingBottom: 20,
-    },
-    option: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 10,
-      paddingHorizontal: 20,
-      borderBottomWidth: 1,
-      // borderBottomColor: '#EDEDED',
-      borderBottomColor: colors.border,
-    },
-    optionContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    optionText: {
-      fontSize: 18,
-      marginLeft: 10,
-    },
-    footer: {
-      alignItems: 'center',
-      marginTop: 20,
-      marginBottom: 10,
-    },
-    version: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      marginBottom: 5,
-    },
-    footerText: {
-      fontSize: 14,
-      fontStyle: 'italic',
-    },
-  });
-
   const renderOption = ({ item }) => (
     <TouchableOpacity onPress={item.onPress} style={styles.option}>
       <View style={styles.optionContainer}>
@@ -166,5 +126,48 @@ const Settings = () => {
     </View>
   );
 };
+
+const componentStyles = (colors) => StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  optionList: {
+    paddingBottom: 20,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    // borderBottomColor: '#EDEDED',
+    borderBottomColor: colors.border,
+  },
+  optionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  optionText: {
+    fontSize: 18,
+    marginLeft: 10,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  version: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: colors.text,
+  },
+  footerText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: colors.text,
+  },
+});
 
 export default Settings;

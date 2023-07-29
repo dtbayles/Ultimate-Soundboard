@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 import { useTheme } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { API_KEY, API_URL } from '@env';
-import {Video} from "expo-av";
+import {Audio, Video} from "expo-av";
 import {Ionicons} from "@expo/vector-icons";
 
 const Upload = () => {
@@ -22,10 +22,21 @@ const Upload = () => {
   const [ file, setFile ] = useState(null);
   const { colors } = useTheme();
   const styles = componentStyles(colors);
+  const ref = useRef(null);
+  const [status, setStatus] = useState({});
 
   useEffect(() => {
     console.log('File.uri:', file ? file.uri : null);
   }, [file]);
+
+  useEffect(() => {
+    if (status.isPlaying) triggerAudio(ref);
+  }, [ref, status.isPlaying]);
+
+  const triggerAudio = async (ref) => {
+    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    ref.current.playAsync();
+  };
 
   const pickFile = async () => {
     try {
@@ -70,10 +81,13 @@ const Upload = () => {
   };
 
   const postFile = async () => {
-    const url = API_URL;
+    const endpoint = API_URL + '/upload';
     const fileUri = file.uri;
     const formData = new FormData();
+    formData.append('name', name);
+    formData.append('category', category);
     formData.append('file', file);
+    formData.append('url', url);
     const options = {
       method: 'POST',
       body: formData,
@@ -86,7 +100,8 @@ const Upload = () => {
 
     try {
       console.log('url:', url);
-      const response = await fetch(url, options);
+      console.log('formData:', formData)
+      const response = await fetch(endpoint, options);
       if (response.ok) {
         console.log('Document uploaded successfully');
         // Display a success message to the user or perform any additional actions
@@ -139,10 +154,12 @@ const Upload = () => {
             {file && file.uri ? (
               <>
                 <Video
+                  ref={ref}
                   source={{ uri: file.uri }}
                   style={styles.previewMedia}
                   resizeMode="contain"
                   useNativeControls
+                  onPlaybackStatusUpdate={(status) => setStatus(status)}
                 />
                 <TouchableOpacity style={styles.clearButton} onPress={() => setFile(null)}>
                   <Ionicons name="close-circle" size={24} color="white" />
@@ -192,7 +209,6 @@ const componentStyles = (colors) => StyleSheet.create({
   },
   formRow: {
     flexDirection: 'column',
-    alignItems: 'left',
     width: '100%',
     paddingHorizontal: 20,
     height: 80,
