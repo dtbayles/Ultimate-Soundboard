@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {NavigationContainer, DefaultTheme, DarkTheme, useTheme} from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import mobileAds from 'react-native-google-mobile-ads';
+// import mobileAds from 'react-native-google-mobile-ads';
 
 import Soundboard from './components/Soundboard';
 import Settings from './components/Settings';
@@ -11,11 +11,11 @@ import Upload from "./components/Upload";
 
 const Tab = createBottomTabNavigator();
 
-mobileAds()
-  .initialize()
-  .then(adapterStatuses => {
-    // Initialization complete!
-  });
+// mobileAds()
+//   .initialize()
+//   .then(adapterStatuses => {
+//     // Initialization complete!
+//   });
 
 export default function App() {
   const colorScheme = useColorScheme();

@@ -3,27 +3,37 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   TouchableOpacity,
   StyleSheet,
-  Image,
   TouchableWithoutFeedback, Keyboard
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
-import { API_KEY, API_URL } from '@env';
+import { API_KEY, API_URL, S3_BUCKET, S3_BASE_URL, REGION, ACCESS_KEY_ID, SECRET_ACCESS_KEY} from '@env';
 import {Audio, Video} from "expo-av";
 import {Ionicons} from "@expo/vector-icons";
+import AWS from 'aws-sdk'
 
 const Upload = () => {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [url, setUrl] = useState('');
-  const [ file, setFile ] = useState(null);
+  const [file, setFile] = useState(null);
   const { colors } = useTheme();
   const styles = componentStyles(colors);
   const ref = useRef(null);
   const [status, setStatus] = useState({});
+  const [progress , setProgress] = useState(0);
+
+  AWS.config.update({
+    accessKeyId: ACCESS_KEY_ID,
+    secretAccessKey: SECRET_ACCESS_KEY
+  })
+
+  const myBucket = new AWS.S3({
+    params: { Bucket: S3_BUCKET},
+    region: REGION,
+  })
 
   useEffect(() => {
     console.log('File.uri:', file ? file.uri : null);
@@ -62,7 +72,8 @@ const Upload = () => {
             name: name,
             size: size,
             uri: uri,
-            type: `${typePrefix}/${fileType}`,
+            type: fileType,
+            typePrefix: typePrefix,
           };
 
           setFile(fileToUpload);
@@ -80,33 +91,71 @@ const Upload = () => {
     }
   };
 
-  const postFile = async () => {
-    const endpoint = API_URL + '/upload';
-    const fileUri = file.uri;
-    const formData = new FormData();
-    formData.append('name', name);
-    formData.append('category', category);
-    formData.append('file', file);
-    formData.append('url', url);
+  const uploadFileToS3 = () => {
+
+    const params = {
+      ACL: 'public-read',
+      Body: null, // Leave this as null for now
+      Bucket: S3_BUCKET,
+      Key: `${name}.${file.type}`,
+    };
+
+    fetch(file.uri)
+        .then(response => response.blob())
+        .then(async blob => {
+          params.Body = blob;
+
+          myBucket.putObject(params)
+              .on('httpUploadProgress', (evt) => {
+                setProgress(Math.round((evt.loaded / evt.total) * 100));
+              })
+              .send((err) => {
+                if (err) {
+                  console.log(`AWS Error: ${err}`);
+                  // Handle the error, e.g., show an error message to the user.
+                } else {
+                  // If putObject is successful, proceed to postFile
+                  const formattedName = encodeURIComponent(name);
+                  const formattedUrl = `${S3_BASE_URL}/${formattedName}.${file.type}`;
+                  postFile(formattedUrl);
+                }
+              });
+        })
+        .catch(error => {
+          console.log('Error reading file content:', error);
+        });
+  }
+
+  const postFile = async (formattedUrl) => {
+    const endpoint = API_URL;
+    let video_source = '';
+    let audio_source = formattedUrl;
+    if (file.typePrefix === 'video') {
+      video_source = formattedUrl;
+    }
+    const body = {
+      name: name,
+      audio_source: audio_source,
+      tags: [""],
+      category: category,
+      video_source: video_source,
+    }
     const options = {
       method: 'POST',
-      body: formData,
+      body: JSON.stringify(body),
       headers: {
-        Accept: 'application/json',
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
         'x-api-key': API_KEY,
       },
     };
 
     try {
-      console.log('url:', url);
-      console.log('formData:', formData)
       const response = await fetch(endpoint, options);
       if (response.ok) {
         console.log('Document uploaded successfully');
         // Display a success message to the user or perform any additional actions
       } else {
-        throw new Error('Failed to upload document');
+        throw new Error(`${response.status} Failed to create sound POST /create. ${response.statusText}`);
       }
     } catch (error) {
       console.log('Error uploading document:', error);
@@ -173,8 +222,9 @@ const Upload = () => {
             )}
           </View>
         </View>
-        <TouchableOpacity style={styles.uploadButtonStyle} activeOpacity={0.5} onPress={postFile}>
+        <TouchableOpacity style={styles.uploadButtonStyle} activeOpacity={0.5} onPress={uploadFileToS3}>
           <Text style={styles.buttonTextStyle}>Upload File</Text>
+          <Text style={styles.textStyle}>Status: {progress}%</Text>
         </TouchableOpacity>
       </View>
     </TouchableWithoutFeedback>

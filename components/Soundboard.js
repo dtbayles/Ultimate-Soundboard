@@ -20,7 +20,7 @@ import * as FileSystem from 'expo-file-system';
 import { useTheme } from "@react-navigation/native";
 import FilterMenu from "./Soundboard/FilterMenu";
 import {DATA, testSounds} from "./utils";
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+// import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 const windowWidth = Dimensions.get('window').width;
 const availableTags = ['golfing', 'tag2', 'tag3', 'tag4', 'tag5'];
@@ -39,7 +39,7 @@ const Soundboard = () => {
   const [hasMorePages, setHasMorePages] = useState(true);
   const [lastFetchedPage, setLastFetchedPage] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
-  const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy'; //TODO change this to the real adUnitId
+  // const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy'; //TODO change this to the real adUnitId
   const itemSize = (windowWidth - 20) / 3 - 10;
 
   const filteredSounds = sounds.filter((sound) => {
@@ -97,6 +97,7 @@ const Soundboard = () => {
 
   const fetchSounds = async () => {
     if (!hasMorePages || isFetching) {
+      // TODO fix case where users have to close and reopen app after they upload a sound
       console.log('No more pages to fetch or already fetching');
       setIsLoading(false);
       return;
@@ -122,6 +123,7 @@ const Soundboard = () => {
       // Set the last fetched page
       // setLastFetchedPage(currentPage);
     } catch (error) {
+      console.log(`API_URL: ${API_URL}?page=${currentPage}&pageSize=20`)
       console.log('Error fetching sounds:', error);
       setIsLoading(false);
     } finally {
@@ -299,13 +301,13 @@ const Soundboard = () => {
           <Text style={styles.noSoundsText}>No sounds found.</Text>
         )}
       </View>
-      <BannerAd
-          unitId={adUnitId}
-          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: true,
-          }}
-        />
+      {/*<BannerAd*/}
+      {/*    unitId={adUnitId}*/}
+      {/*    size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}*/}
+      {/*    requestOptions={{*/}
+      {/*      requestNonPersonalizedAdsOnly: true,*/}
+      {/*    }}*/}
+      {/*  />*/}
     </View>
   );
 };
